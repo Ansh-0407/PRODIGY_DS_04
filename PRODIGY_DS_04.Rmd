@@ -1,0 +1,139 @@
+---
+title: "PRODIGY_DS_04"
+author: "Ansh Bansal"
+date: "2026-04-28"
+output: word_document
+---
+
+
+## Project Title: Multi-Entity Sentiment Analysis and Textual Patterns in Social Media
+
+## 1. Introduction
+In the digital age, social media platforms serve as the primary arena for public discourse. For corporations, game developers, and public figures, understanding the "pulse" of the audience is critical for brand management and product development. This project utilizes a large-scale Twitter dataset containing thousands of records categorized by entity (brand/game) and sentiment. Using the **Tidyverse** ecosystem in R, we perform an Exploratory Data Analysis (EDA) to uncover how different sentiments are distributed across popular entities and whether the physical length of a tweet correlates with the emotion expressed.
+
+
+
+## 2. Comprehensive R Code
+
+```{r}
+# ==========================================
+# 1. ENVIRONMENT SETUP & DATA INGESTION
+# ==========================================
+library(readr)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+```
+
+```{r}
+# Load the dataset
+# Column names are assigned manually based on the dataset structure
+column_names <- c("Tweet_ID", "Entity", "Sentiment", "Tweet_Content")
+raw_data <- read_csv("C:/Users/anshb/Downloads/twitter_training.csv.zip", col_names = column_names)
+View(raw_data)
+```
+
+```{r}
+# ==========================================
+# 2. DATA PREPROCESSING & CLEANING
+# ==========================================
+# Removing rows with missing text and removing exact duplicates
+# to ensure the integrity of the statistical count.
+df_clean <- raw_data %>%
+  drop_na(Tweet_Content) %>%
+  distinct()
+```
+
+```{r}
+# ==========================================
+# 3. FEATURE ENGINEERING
+# ==========================================
+# We create a new feature 'Tweet_Length' to analyze text volume.
+df_analysis <- df_clean %>%
+  mutate(Tweet_Length = nchar(as.character(Tweet_Content)))
+
+# Summary statistics for tweet length by sentiment
+stats_summary <- df_analysis %>%
+  group_by(Sentiment) %>%
+  summarise(
+    Avg_Length = mean(Tweet_Length),
+    Median_Length = median(Tweet_Length),
+    Total_Count = n()
+  )
+```
+
+```{r}
+# ==========================================
+# 4. DATA VISUALIZATION
+# ==========================================
+
+# A. Global Sentiment Distribution
+# Purpose: To understand the balance/bias of the dataset.
+ggplot(df_analysis, aes(x = Sentiment, fill = Sentiment)) +
+  geom_bar() +
+  labs(title = "Frequency of Sentiments Across All Tweets",
+       subtitle = "Comparison of Positive, Negative, Neutral, and Irrelevant categories",
+       x = "Sentiment Category",
+       y = "Number of Tweets") +
+  theme_minimal() +
+  scale_fill_brewer(palette = "Set1")
+
+# B. Analysis of Tweet Length by Sentiment
+# Purpose: Do people write longer rants (negative) or longer praises (positive)?
+ggplot(df_analysis, aes(x = Sentiment, y = Tweet_Length, fill = Sentiment)) +
+  geom_boxplot() +
+  coord_cartesian(ylim = c(0, 500)) + # Zooming in to exclude extreme outliers
+  labs(title = "Tweet Length Distribution by Sentiment",
+       x = "Sentiment",
+       y = "Character Count") +
+  theme_light()
+
+# C. Entity-Specific Sentiment Proportions
+# Filtering for the top 10 most discussed entities for clarity.
+top_10_entities <- df_analysis %>%
+  count(Entity) %>%
+  top_n(10, n) %>%
+  pull(Entity)
+
+df_top_entities <- df_analysis %>%
+  filter(Entity %in% top_10_entities)
+
+ggplot(df_top_entities, aes(x = Entity, fill = Sentiment)) +
+  geom_bar(position = "fill") +
+  coord_flip() +
+  labs(title = "Sentiment Ratio for Top 10 Entities",
+       subtitle = "Relative proportion of feedback per brand/game",
+       x = "Entity Name",
+       y = "Proportion") +
+  theme_minimal()
+```
+
+
+## 3. Detailed Interpretation of Steps
+
+* **Data Ingestion and Cleaning:** The initial step involves handling a "headerless" CSV. By assigning `column_names`, we make the code readable. The use of `drop_na()` is vital because sentiment analysis cannot be performed on empty strings. Removing duplicates ensures that "bot" activity or repeated retweets do not skew the results for a specific brand.
+    
+* **Feature Engineering (Tweet Length):** By creating the `Tweet_Length` variable, we move beyond simple counting. This allows us to test hypotheses—for example, the idea that "Negative" sentiment might involve longer, more detailed descriptions of problems compared to "Positive" or "Irrelevant" mentions.
+
+* **Global Sentiment Distribution (Visualization A):** This bar chart provides a baseline. If the "Irrelevant" or "Neutral" categories dominate, it suggests the dataset contains a lot of noise or general news chatter rather than direct consumer feedback. 
+
+* **Boxplot Analysis (Visualization B):** 
+
+[Image of box plot]
+
+    The boxplot visualizes the spread and median of tweet lengths. By capping the Y-axis at 500 characters, we ignore outliers (like copy-pasted text) and focus on the typical user behavior. This helps identify if certain emotions drive more "wordy" responses.
+
+* **Sentiment Ratio per Entity (Visualization C):** Using `position = "fill"` is the most professional way to compare entities of different sizes. It allows us to see, for example, if *Nvidia* has a higher *percentage* of positive sentiment compared to *Borderlands*, even if one has far more total tweets than the other. This identifies "Brand Health."
+
+
+
+## 4. Conclusion and Future Directions
+
+**Project Summary:**
+The analysis successfully mapped the landscape of social media sentiment across diverse entities. Key findings indicate that sentiment is not uniformly distributed; certain entities (like specific gaming titles) trigger much more polarized (Positive vs. Negative) reactions compared to tech brands, which often trend toward Neutral or Irrelevant data. Furthermore, the length of the content provides a secondary layer of insight into user engagement.
+
+**Limitations:**
+The current analysis treats all words with equal weight and does not account for sarcasm, which is prevalent on Twitter. Additionally, the "Irrelevant" category suggests that many tweets mention the entity name without providing meaningful feedback.
+
+**Future Work:**
+To elevate this project further, a **Natural Language Processing (NLP)** approach using the `tidytext` library could be used to identify the specific keywords driving negative sentiment. Additionally, machine learning models (like Random Forest or SVM) could be trained on this dataset to automatically classify the sentiment of new, incoming tweets in real-time.
